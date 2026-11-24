@@ -136,10 +136,6 @@ fun SegmentationOverlay(maskBitmap: Bitmap?, modifier: Modifier = Modifier) {
 
         // Como CameraX aplica FILL_CENTER (CenterCrop), elegimos la escala mayor
         val finalScale = maxOf(scaleX, scaleY)
-        
-        // Calculamos el desplazamiento para centrar la máscara
-        val dx = (size.width - (maskBitmap.height * finalScale)) / 2f
-        val dy = (size.height - (maskBitmap.width * finalScale)) / 2f
 
         val bitmapShader = BitmapShader(maskBitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
         runtimeShader.setInputShader("maskShader", bitmapShader)
@@ -149,11 +145,18 @@ fun SegmentationOverlay(maskBitmap: Bitmap?, modifier: Modifier = Modifier) {
         shaderPaint.isFilterBitmap = false 
 
         drawIntoCanvas { canvas ->
-            // Rotamos y centramos el canvas 90 grados
-            canvas.translate(size.width / 2f, size.height / 2f) // Mover al centro real
-            canvas.rotate(90f) // Girar la matriz para enderezar el tensor de MediaPipe
+            // 1. Mover el centro de dibujo al centro exacto de la pantalla
+            canvas.translate(size.width / 2f, size.height / 2f) 
             
-            // Retroceder el equivalente al centro de la máscara girada y aplicar el scale
+            // 2. Rotar 270 grados (o -90) hacia la izquierda para alinear correctamente
+            // la orientación natural del sensor de Android con respecto a la pantalla
+            canvas.rotate(-90f) 
+            
+            // 3. ¡ESPEJO! La cámara frontal en Android por hardware es un "espejo" físico.
+            // Invertimos el eje Y para que la silueta siga a la mano correcta.
+            canvas.scale(1f, -1f)
+
+            // 4. Retroceder a la esquina superior izquierda del mapa rotado y escalar
             canvas.translate(- (maskBitmap.width * finalScale) / 2f, - (maskBitmap.height * finalScale) / 2f)
             canvas.scale(finalScale, finalScale)
             
